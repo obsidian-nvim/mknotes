@@ -1,0 +1,276 @@
+#!/usr/bin/env bash
+
+# mknotes - create random Lorem Ipsum Obsidian notes
+
+set -e
+
+usage() {
+    cat <<EOF
+
+NAME
+    mknotes - create Lorem Ipsum Obsidian Markdown notes
+
+SYNOPSIS
+    mknotes [OPTION..] NOTE_COUNT
+
+OPTIONS:
+    -n, --dry-run                                         Print note contents to console instead of writing files
+    -h, --help                                            Show this help message
+    -f, --file-name FILE_NAME                             Note file name
+    -d, --dir-name DIR_NAME                               Notes file directory
+    -p, --paragraphs [MAX_PARAGRAPHS[,MIN_PARAGRAPHS]]    Number of paragraphs per note
+    -w, --words [MAX_WORDS[,MIN_WORDS]]                   Number of words per paragraph
+    -s, --seed SEED                                       Set the random seed for reproducible notes
+
+DESCRIPTION
+    Create NOTE_COUNT Obsidian Markdown note files in the current directory or specified directory.
+
+    - Note sizes range randomly from MIN_PARAGRAPHS (0..MAX_PARAGRAPHS, default 0) to MAX_PARAGRAPHS (1..999, default 5).
+      Examples: -p 10 (0 to 10 paragraphs per note), -p 20,10 (10 to 20 paragraphs per note).
+    - Paragraph sizes range randomly from MIN_WORDS (0..MAX_WORDS, default 25) to MAX_WORDS (1..999, default 150).
+      Examples: -w 10 (0 to 10 words per paragraph), -w 20,10 (10 to 20 words per paragraph).
+    - Paragraph text is Lorem Ipsum text.
+    - All files have an Obsidian frontmatter header.
+    - FILE_NAME is the note file name prefix (default note).
+    - DIR_NAME is the notes file directory (default current directory).
+    - SEED is an integer to initialize the random number generator for reproducible output.
+    - Note files are named like FILE_NAME-N.md where N is 1,2,..
+    - If NOTE_COUNT is 1 then the file name is FILE_NAME.md
+EOF
+    exit 1
+}
+
+# Default values
+DRY_RUN=0
+FILE_NAME="note"
+DIR_NAME="."
+MIN_PARAGRAPHS=0
+MAX_PARAGRAPHS=5
+MIN_WORDS=25
+MAX_WORDS=150
+SEED=""
+
+# Default lorem ipsum word list
+LOREM_WORDS=(
+    Lorem ipsum dolor sit amet consectetur adipiscing elit sed do eiusmod tempor incididunt ut labore et dolore magna aliqua Ut enim ad minim veniam quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat Duis aute irure dolor in reprehenderit in voluptate velit esse cillum dolore eu fugiat nulla pariatur Excepteur sint occaecat cupidatat non proident sunt in culpa qui officia deserunt mollit anim id est laborum
+)
+
+# Helper: normalise integer value to [min, max]
+normalise_int() {
+    local val=$1
+    local min=$2
+    local max=$3
+    echo $(( val % (max - min + 1) + min ))
+}
+
+# Helper: generate a single paragraph of N words
+gen_paragraph() {
+    local word_count=$1
+    local words=()
+    for ((i=0; i<word_count; i++)); do
+        rnd=$RANDOM
+        idx=$(( $rnd % ${#LOREM_WORDS[@]} ))
+        words+=("${LOREM_WORDS[$idx]}")
+    done
+    # Capitalize first word, add period at end
+    words[0]=$(echo "${words[0]}" | awk '{print toupper(substr($0,1,1)) tolower(substr($0,2))}')
+    echo "${words[*]}."
+}
+
+# Helper: generate YAML frontmatter
+gen_frontmatter() {
+    local title=$1
+    cat <<EOF
+---
+title: "$title"
+tags: [lorem, generated]
+---
+
+EOF
+}
+
+# Parse paragraphs/words option: -p/-w
+parse_range() {
+    # $1: input string, $2: default_min, $3: default_max
+    local arg="$1"
+    local default_min="$2"
+    local default_max="$3"
+    local min="$default_min"
+    local max="$default_max"
+    if [[ "$arg" =~ ^[0-9]+$ ]]; then
+        max="$arg"
+        min="$default_min"
+    elif [[ "$arg" =~ ^([0-9]+),([0-9]+)$ ]]; then
+        max="${BASH_REMATCH[1]}"
+        min="${BASH_REMATCH[2]}"
+        if (( min > max )); then
+            local tmp="$min"
+            min="$max"
+            max="$tmp"
+        fi
+    else
+        echo "Invalid range: $arg"
+        usage
+    fi
+    echo "$min $max"
+}
+
+# Option parsing
+ARGS=()
+while [[ $# -gt 0 ]]; do
+    case "$1" in
+        -n|--dry-run)
+            DRY_RUN=1
+            shift
+            ;;
+        -h|--help)
+            usage
+            ;;
+        -f|--file-name)
+            if [[ -z "$2" ]]; then
+                echo "Error: --file-name requires an argument."
+                usage
+            fi
+            FILE_NAME="$2"
+            shift 2
+            ;;
+        -d|--dir-name)
+            if [[ -z "$2" ]]; then
+                echo "Error: --dir-name requires an argument."
+                usage
+            fi
+            DIR_NAME="$2"
+            shift 2
+            ;;
+        -p|--paragraphs)
+            if [[ -z "$2" ]]; then
+                echo "Error: --paragraphs requires an argument."
+                usage
+            fi
+            read MIN_PARAGRAPHS MAX_PARAGRAPHS <<< $(parse_range "$2" 0 5)
+            shift 2
+            ;;
+        -w|--words)
+            if [[ -z "$2" ]]; then
+                echo "Error: --words requires an argument."
+                usage
+            fi
+            read MIN_WORDS MAX_WORDS <<< $(parse_range "$2" 25 150)
+            shift 2
+            ;;
+        -s|--seed)
+            if [[ -z "$2" ]]; then
+                echo "Error: --seed requires an argument."
+                usage
+            fi
+            SEED="$2"
+            shift 2
+            ;;
+        --) # end of options
+            shift
+            break
+            ;;
+        -*) # unknown option
+            echo "Unknown option: $1"
+            usage
+            ;;
+        *) # positional argument
+            ARGS+=("$1")
+            shift
+            ;;
+    esac
+done
+
+# After options, the remaining argument must be NOTE_COUNT
+if [[ ${#ARGS[@]} -ne 1 ]]; then
+    echo "Error: NOTE_COUNT is required."
+    usage
+fi
+
+NOTE_COUNT="${ARGS[0]}"
+if ! [[ "$NOTE_COUNT" =~ ^[0-9]+$ ]] || (( NOTE_COUNT < 1 )); then
+    echo "Error: NOTE_COUNT must be a positive integer."
+    usage
+fi
+
+# Validate ranges
+if (( MIN_PARAGRAPHS < 0 || MAX_PARAGRAPHS < 1 || MIN_PARAGRAPHS > MAX_PARAGRAPHS || MAX_PARAGRAPHS > 999 )); then
+    echo "Error: Invalid paragraph range."
+    usage
+fi
+if (( MIN_WORDS < 0 || MAX_WORDS < 1 || MIN_WORDS > MAX_WORDS || MAX_WORDS > 999 )); then
+    echo "Error: Invalid word range."
+    usage
+fi
+
+# Validate file name (basic check for illegal characters)
+if [[ "$FILE_NAME" =~ [\/:\?\*\>\<\|] ]]; then
+    echo "Error: FILE_NAME contains illegal characters."
+    usage
+fi
+
+# Validate directory name (basic check for illegal characters)
+if [[ "$DIR_NAME" =~ [\?\*\>\<\|] ]]; then
+    echo "Error: DIR_NAME contains illegal characters."
+    usage
+fi
+
+# Set random seed if specified
+if [[ -n "$SEED" ]]; then
+    if ! [[ "$SEED" =~ ^[0-9]+$ ]]; then
+        echo "Error: SEED must be an integer."
+        usage
+    fi
+    RANDOM="$SEED"
+fi
+
+# Create directory if not dry-run and doesn't exist
+if [[ $DRY_RUN -eq 0 ]]; then
+    if [[ ! -d "$DIR_NAME" ]]; then
+        mkdir -p "$DIR_NAME"
+    fi
+fi
+
+# Get current date in ISO 8601
+NOW=$(date +"%Y-%m-%dT%H:%M:%S%z")
+
+if [[ $DRY_RUN -eq 1 ]]; then
+    echo "Dry run: Generating $NOTE_COUNT note(s) with paragraphs: $MIN_PARAGRAPHS..$MAX_PARAGRAPHS, words: $MIN_WORDS..$MAX_WORDS"
+    echo
+fi
+
+for ((n=1; n<=NOTE_COUNT; n++)); do
+    if (( NOTE_COUNT == 1 )); then
+        filename="${FILE_NAME}.md"
+        title="${FILE_NAME//-/ }"
+    else
+        filename="${FILE_NAME}-${n}.md"
+        title="${FILE_NAME//-/ } $n"
+    fi
+    rnd=$RANDOM
+    para_count=$(normalise_int $rnd "$MIN_PARAGRAPHS" "$MAX_PARAGRAPHS")
+    if [[ $DRY_RUN -eq 1 ]]; then
+        echo "----- $filename ($para_count paragraphs | NOTE_COUNT=$NOTE_COUNT | paragraphs=$MIN_PARAGRAPHS..$MAX_PARAGRAPHS | words=$MIN_WORDS..$MAX_WORDS) -----"
+        gen_frontmatter "$title"
+        for ((p=1; p<=para_count; p++)); do
+            rnd=$RANDOM
+            word_count=$(normalise_int $rnd "$MIN_WORDS" "$MAX_WORDS")
+            gen_paragraph "$word_count"
+            echo
+        done
+        echo
+    else
+        filepath="$DIR_NAME/$filename"
+        {
+            gen_frontmatter "$title"
+            for ((p=1; p<=para_count; p++)); do
+                rnd=$RANDOM
+                word_count=$(normalise_int $rnd "$MIN_WORDS" "$MAX_WORDS")
+                gen_paragraph "$word_count"
+                echo
+            done
+        } > "$filepath"
+        echo "Created $filepath ($para_count paragraphs)"
+    fi
+done
+
