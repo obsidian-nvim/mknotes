@@ -5,7 +5,7 @@
 ## Installation
 
 ```
-curl -L -o mknotes https://raw.githubusercontent.com/obsidian.nvim/mknotes/refs/heads/main/mknotes
+curl -L -o mknotes https://raw.githubusercontent.com/obsidian-nvim/mknotes/main/mknotes
 chmod +x mknotes
 ```
 
