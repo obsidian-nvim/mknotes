@@ -26,6 +26,7 @@ OPTIONS:
 DESCRIPTION
     Create NOTE_COUNT Obsidian Markdown note files in the current directory or specified directory.
 
+    - If NOTE_COUNT is 0, a single note is printed to stdout.
     - Note sizes range randomly from MIN_PARAGRAPHS (0..MAX_PARAGRAPHS, default 0) to MAX_PARAGRAPHS (1..999, default 5).
       Examples: -p 10 (0 to 10 paragraphs per note), -p 20,10 (10 to 20 paragraphs per note).
     - Paragraph sizes range randomly from MIN_WORDS (0..MAX_WORDS, default 25) to MAX_WORDS (1..999, default 150).
@@ -193,8 +194,8 @@ if [[ ${#ARGS[@]} -ne 1 ]]; then
 fi
 
 NOTE_COUNT="${ARGS[0]}"
-if ! [[ "$NOTE_COUNT" =~ ^[0-9]+$ ]] || (( NOTE_COUNT < 1 )); then
-    echo "Error: NOTE_COUNT must be a positive integer."
+if ! [[ "$NOTE_COUNT" =~ ^[0-9]+$ ]]; then
+    echo "Error: NOTE_COUNT must be a non-negative integer."
     usage
 fi
 
@@ -230,7 +231,7 @@ if [[ -n "$SEED" ]]; then
 fi
 
 # Create directory if not dry-run and doesn't exist
-if [[ $DRY_RUN -eq 0 ]]; then
+if [[ $DRY_RUN -eq 0 && $NOTE_COUNT -ge 1 ]]; then
     if [[ ! -d "$DIR_NAME" ]]; then
         mkdir -p "$DIR_NAME"
     fi
@@ -238,6 +239,24 @@ fi
 
 # Get current date in ISO 8601
 NOW=$(date +"%Y-%m-%dT%H:%M:%S%z")
+
+if [[ $NOTE_COUNT -eq 0 ]]; then
+    # Special case: Output a single note to stdout
+    filename="${FILE_NAME}.md"
+    title="${FILE_NAME//-/ }"
+    rnd=$RANDOM
+    para_count=$(normalise_int $rnd "$MIN_PARAGRAPHS" "$MAX_PARAGRAPHS")
+    if [[ $INCLUDE_FRONTMATTER -eq 1 ]]; then
+        gen_frontmatter "$title"
+    fi
+    for ((p=1; p<=para_count; p++)); do
+        rnd=$RANDOM
+        word_count=$(normalise_int $rnd "$MIN_WORDS" "$MAX_WORDS")
+        gen_paragraph "$word_count"
+        echo
+    done
+    exit 0
+fi
 
 if [[ $DRY_RUN -eq 1 ]]; then
     echo "Dry run: Generating $NOTE_COUNT note(s) with paragraphs: $MIN_PARAGRAPHS..$MAX_PARAGRAPHS, words: $MIN_WORDS..$MAX_WORDS"
