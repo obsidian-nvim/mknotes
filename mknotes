@@ -65,18 +65,19 @@ normalise_int() {
     echo $(( val % (max - min + 1) + min ))
 }
 
-# Helper: generate a single paragraph of N words
+# Helper: generate a single paragraph of N words, updating a variable by reference
 gen_paragraph() {
-    local word_count=$1
+    local -n _outvar=$1
+    local word_count=$2
     local words=()
     for ((i=0; i<word_count; i++)); do
         rnd=$RANDOM
-        idx=$(( $rnd % ${#LOREM_WORDS[@]} ))
+        idx=$(( rnd % ${#LOREM_WORDS[@]} ))
         words+=("${LOREM_WORDS[$idx]}")
     done
     # Capitalize first word, add period at end
     words[0]=$(echo "${words[0]}" | awk '{print toupper(substr($0,1,1)) tolower(substr($0,2))}')
-    echo "${words[*]}."
+    _outvar="${words[*]}."
 }
 
 # Helper: generate YAML frontmatter
@@ -252,7 +253,9 @@ if [[ $NOTE_COUNT -eq 0 ]]; then
     for ((p=1; p<=para_count; p++)); do
         rnd=$RANDOM
         word_count=$(normalise_int $rnd "$MIN_WORDS" "$MAX_WORDS")
-        gen_paragraph "$word_count"
+        paragraph=""
+        gen_paragraph paragraph "$word_count"
+        echo "$paragraph"
         echo
     done
     exit 0
@@ -281,7 +284,9 @@ for ((n=1; n<=NOTE_COUNT; n++)); do
         for ((p=1; p<=para_count; p++)); do
             rnd=$RANDOM
             word_count=$(normalise_int $rnd "$MIN_WORDS" "$MAX_WORDS")
-            gen_paragraph "$word_count"
+            paragraph=""
+            gen_paragraph paragraph "$word_count"
+            echo "$paragraph"
             echo
         done
         echo
@@ -294,7 +299,9 @@ for ((n=1; n<=NOTE_COUNT; n++)); do
             for ((p=1; p<=para_count; p++)); do
                 rnd=$RANDOM
                 word_count=$(normalise_int $rnd "$MIN_WORDS" "$MAX_WORDS")
-                gen_paragraph "$word_count"
+                paragraph=""
+                gen_paragraph paragraph "$word_count"
+                echo "$paragraph"
                 echo
             done
         } > "$filepath"
