@@ -27,7 +27,7 @@ DESCRIPTION
     Create NOTE_COUNT Obsidian Markdown note files in the current directory or specified directory.
 
     - If NOTE_COUNT is 0, a single note is printed to stdout.
-    - Note sizes range randomly from MIN_PARAGRAPHS (0..MAX_PARAGRAPHS, default 0) to MAX_PARAGRAPHS (1..999, default 5).
+    - Note sizes range randomly from MIN_PARAGRAPHS (0..MAX_PARAGRAPHS, default 1) to MAX_PARAGRAPHS (1..999, default 5).
       Examples: -p 10 (0 to 10 paragraphs per note), -p 20,10 (10 to 20 paragraphs per note).
     - Paragraph sizes range randomly from MIN_WORDS (0..MAX_WORDS, default 25) to MAX_WORDS (1..999, default 150).
       Examples: -w 10 (0 to 10 words per paragraph), -w 20,10 (10 to 20 words per paragraph).
@@ -45,7 +45,7 @@ EOF
 DRY_RUN=0
 FILE_NAME="note"
 DIR_NAME="."
-MIN_PARAGRAPHS=0
+MIN_PARAGRAPHS=1
 MAX_PARAGRAPHS=5
 MIN_WORDS=25
 MAX_WORDS=150
