@@ -21,7 +21,7 @@ OPTIONS:
     -p, --paragraphs [MAX_PARAGRAPHS[,MIN_PARAGRAPHS]]    Number of paragraphs per note
     -w, --words [MAX_WORDS[,MIN_WORDS]]                   Number of words per paragraph
     -s, --seed SEED                                       Set the random seed for reproducible notes
-    -m, --frontmatter                                     Include Obsidian frontmatter metadata header
+    --frontmatter                                         Include Obsidian frontmatter metadata header
     --wrap WIDTH                                          Wrap paragraphs to fit the specified WIDTH
 
 DESCRIPTION
@@ -171,7 +171,7 @@ while [[ $# -gt 0 ]]; do
             SEED="$2"
             shift 2
             ;;
-        -m|--frontmatter)
+        --frontmatter)
             INCLUDE_FRONTMATTER=1
             shift
             ;;
