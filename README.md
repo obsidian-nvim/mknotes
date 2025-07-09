@@ -7,6 +7,7 @@
 ```
 curl -L -o mknotes https://raw.githubusercontent.com/obsidian-nvim/mknotes/main/mknotes
 chmod +x mknotes
+./mknotes --help
 ```
 
 ## Usage
@@ -26,7 +27,8 @@ OPTIONS:
     -p, --paragraphs [MAX_PARAGRAPHS[,MIN_PARAGRAPHS]]    Number of paragraphs per note
     -w, --words [MAX_WORDS[,MIN_WORDS]]                   Number of words per paragraph
     -s, --seed SEED                                       Set the random seed for reproducible notes
-    -m, --frontmatter                                     Include Obsidian frontmatter metadata header
+    --frontmatter                                         Include Obsidian frontmatter metadata header
+    --wrap WIDTH                                          Wrap paragraphs to fit the specified WIDTH
 
 DESCRIPTION
     Create NOTE_COUNT Obsidian Markdown note files in the current directory or specified directory.
@@ -42,5 +44,4 @@ DESCRIPTION
     - SEED is an integer to initialize the random number generator for reproducible output.
     - Note files are named like FILE_NAME-N.md where N is 1,2,..
     - If NOTE_COUNT is 1 then the file name is FILE_NAME.md
-
 ```
